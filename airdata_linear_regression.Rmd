@@ -1,0 +1,107 @@
+```{r}
+library(GGally)
+library(lmtest)
+library(tidymodels)
+library(tidyverse)
+```
+
+```{r}
+air = airquality
+
+str(air)
+summary(air)
+```
+```{r}
+nrow(air)
+ncol(air)
+```
+```{r}
+colnames(air)[colSums(is.na(air)) > 0]
+```
+
+```{r}
+air2 <- drop_na(air)
+
+summary(air2)
+```
+
+```{r}
+ncol(air2)
+nrow(air2)
+```
+
+```{r}
+ggpairs(air2)
+```
+
+```{r}
+ggcorr(air2, label = TRUE)
+```
+
+#Plot temp as a predictor for ozone starting with ggplot
+
+```{r}
+ggplot(air2, aes(x=Temp, y=Ozone))+
+  geom_point()
+
+ggplot(air2, aes(x=Temp, y=Ozone))+
+  geom_point() +
+  theme_bw() #white out the background of the plot for easier viewing
+```
+#Plot linear regression on a model with temp to predict ozone
+```{r}
+air_recipe = recipe(Ozone ~ Temp, air2) #lr recipe
+
+lm_model = #give the model type a name
+linear_reg() %>% #specify linear regression
+set_engine("lm") #specify the specify type of linear tool 
+
+lm_wflow = workflow() %>%
+add_model(lm_model) %>%
+add_recipe(air_recipe)
+
+lm_fit = fit(lm_wflow, air2)
+
+summary(lm_fit$fit$fit$fit)
+
+```
+#Y intercept of linear regression model is -147.6 with a slope of 2.4391
+#notice p-value of temp as a predictor for ozone IS significant with p-value <.05 ***
+
+```{r}
+confint(lm_fit$fit$fit$fit)
+
+
+```
+#If temp = 80 degrees, what is the predicted ozone level?
+```{r}
+predict(lm_fit,data.frame("Temp"=80))
+```
+#If temp = 32 degrees, what is the predicted ozone level?
+```{r}
+ predict(lm_fit,data.frame("Temp"=32))
+```
+
+#There are 4 linear regression model assumptions. Are any of the assumptions violated?
+
+#1: Evidence of autocorrelation is not noted in the ggplot.
+#2: Evidence of non-independent residuals? I must do a Durbin Watson Test
+```{r}
+dwtest(lm_fit$fit$fit$fit)
+```
+#p-value greater than 0.05 fails to reject null (no evidence of non-independent residuals)
+
+#3 Evidence of obvious/severe difference in residual variance. I must plot residuals.
+```{r}
+air2 = air2 %>% mutate(resid1 = lm_fit$fit$fit$fit$residuals)
+ggplot(air2,aes(x=Temp,y=resid1)) + geom_point()
+```
+#3 Residuals plot is concentrated around -25 to 25 with no obvious differences that are concerning.
+
+#4 Residuals appear to have normality. I must plot residuals again.
+```{r}
+ggplot(air2,aes(x=resid1)) + geom_histogram()
+```
+#Kinda concerning, what about the isolated bin at the top? Needs further checking because the bulk of the data (highest counts) are centered around zero. Perhaps I need to change the bins.
+
+
